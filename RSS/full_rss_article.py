@@ -1,12 +1,11 @@
 import feedparser
 import datetime
 import csv
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional  # Added Optional here
 import requests
 from requests.exceptions import RequestException
 import socket
 import time
-
 class PRWireParser:
     def __init__(self, feed_url: str, timeout: int = 10):
         """
@@ -79,13 +78,17 @@ class PRWireParser:
                 if not entry.get('title') or not entry.get('link'):
                     continue
                     
+                # Get the full content
+                content = self._extract_full_content(entry)
+                
                 parsed_entry = {
                     'title': entry.get('title', ''),
                     'link': entry.get('link', ''),
                     'published': entry.get('published', ''),
-                    'summary': entry.get('summary', '')[:500],  # Limit summary length
-                    'company': self._extract_company(entry),
-                    'categories': ','.join([tag.term for tag in entry.get('tags', [])])
+                    'summary': entry.get('summary', ''),
+                    'content': content,
+                    'author': entry.get('author', ''),
+                    'categories': self._extract_categories(entry)
                 }
                 entries.append(parsed_entry)
                 
@@ -98,70 +101,70 @@ class PRWireParser:
             
         return entries
 
-    def _extract_company(self, entry: Dict) -> str:
+    def _extract_full_content(self, entry: Dict) -> str:
         """
-        Extract company name from entry metadata (optimized).
+        Extract full content from entry, trying multiple possible locations.
         
         Args:
             entry (Dict): Feed entry
             
         Returns:
-            str: Extracted company name or empty string
+            str: Full content or empty string
         """
-        # Quick checks for common company information locations
-        if hasattr(entry, 'source') and entry.source.get('title'):
-            return entry.source.get('title', '')
-        
-        if hasattr(entry, 'author'):
-            return entry.author
-            
-        # Only check content if other methods fail
+        # Try content field first
         if hasattr(entry, 'content'):
             try:
-                first_line = entry.content[0].value.split('\n')[0]
-                if ' - ' in first_line:
-                    return first_line.split(' - ')[0].strip()
+                return entry.content[0].value
             except (IndexError, AttributeError):
                 pass
-                
-        return ''
-
-
-def main(num_articles: int, timeout: int):
-    # Example usage with performance monitoring
-    feed_urls = [
-        # 'https://www.prnewswire.com/rss/news-releases-list.rss',
-        'https://www.prnewswire.com/rss/telecommunications-latest-news/telecommunications-latest-news-list.rss'
-    ]
-    
-    # Dictionary to store results
-    results = {}
-    
-    for url in feed_urls:
-        start_time = time.time()
-        parser = PRWireParser(url, timeout=timeout)  # 10 second timeout
         
-        if parser.fetch_feed():
-            # Get latest entry
-            entries = parser.get_entries(limit=num_articles)
+        # Try content:encoded field
+        if hasattr(entry, 'content_encoded'):
+            return entry.content_encoded
             
-            if entries:
-                # Store entries in dictionary with timestamp as key
-                timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-                results[timestamp] = entries[0]  # Store the single entry
-                
-                print(f"Stored entry from {url} in results dictionary")
-                print(f"Total processing time: {time.time() - start_time:.2f} seconds")
-            else:
-                print(f"No valid entries found for {url}")
-        else:
-            print(f"Failed to fetch feed from {url}")
+        # Try description field
+        if hasattr(entry, 'description'):
+            return entry.description
+            
+        # Fall back to summary if nothing else is available
+        return entry.get('summary', '')
 
-    print(results)
+    def _extract_categories(self, entry: Dict) -> str:
+        """
+        Extract categories from entry.
+        
+        Args:
+            entry (Dict): Feed entry
+            
+        Returns:
+            str: Comma-separated categories
+        """
+        if hasattr(entry, 'tags'):
+            return ','.join([tag.term for tag in entry.tags])
+        elif hasattr(entry, 'categories'):
+            return ','.join(entry.categories)
+        return ''
     
-    return results  # Return the dictionary containing all entries
+def main(num_articles: int, timeout: int):
+    feed_url = 'https://www.lux.camera/rss/'
+    parser = PRWireParser(feed_url, timeout=timeout)
+    
+    if parser.fetch_feed():
+        entries = parser.get_entries(limit=num_articles)
+        for entry in entries:
+            print(f"\nTitle: {entry['title']}")
+            print(f"Author: {entry['author']}")
+            print(f"Published: {entry['published']}")
+            print(f"Categories: {entry['categories']}")
+            # print(f"Content length: {len(entry['content'])} characters")
+            print("\nContent:")
+            print("-" * 80)
+            print(entry['content'])
+            print("-" * 80)
+            print("Content preview:", entry['content'])
+            print("-" * 80)
+    
+    return entries
 
 if __name__ == "__main__":
-    num_articles = 3
-    timeout = 10
-    main(num_articles, timeout)
+    entries = main(num_articles=1, timeout=10)
