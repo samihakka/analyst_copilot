@@ -39,3 +39,8 @@ finetune/bin/accelerate-estimate-memory
 finetune/bin/accelerate-config
 finetune/bin/accelerate
 .ipynb_checkpoints/initial_experiment-checkpoint.ipynb
+<<<<<<< HEAD
+/finetune
+RSS.ipynb
+=======
+>>>>>>> parent of fbb9e25 (Adding webscraping stuff from last semester, ignoring finetuning example for now)
