@@ -6,6 +6,9 @@ import requests
 from requests.exceptions import RequestException
 import socket
 import time
+from bs4 import BeautifulSoup
+import re
+
 class PRWireParser:
     def __init__(self, feed_url: str, timeout: int = 10):
         """
@@ -144,13 +147,106 @@ class PRWireParser:
         elif hasattr(entry, 'categories'):
             return ','.join(entry.categories)
         return ''
+
+
+
+def clean_article_content(html_content: str) -> str:
+    """
+    Clean HTML content and return readable text while preserving structure.
     
+    Args:
+        html_content (str): Raw HTML content from RSS feed
+        
+    Returns:
+        str: Cleaned, formatted text
+    """
+    # Parse HTML
+    soup = BeautifulSoup(html_content, 'html.parser')
+    
+    # Handle common elements
+    for tag in soup.find_all(['script', 'style', 'iframe', 'blockquote']):
+        tag.decompose()
+    
+    # Extract image captions
+    image_sections = []
+    for img in soup.find_all('figure'):
+        caption = img.find('figcaption')
+        if caption:
+            image_sections.append(f"[Image: {caption.get_text().strip()}]")
+        else:
+            alt_text = img.find('img')
+            if alt_text and alt_text.get('alt'):
+                image_sections.append(f"[Image: {alt_text['alt']}]")
+        img.decompose()
+    
+    # Get main text content
+    text = soup.get_text()
+    
+    # Clean up whitespace
+    text = re.sub(r'\n\s*\n', '\n\n', text)  # Replace multiple newlines
+    text = re.sub(r' +', ' ', text)  # Replace multiple spaces
+    
+    # Add image captions back in
+    if image_sections:
+        text = text + "\n\n" + "\n".join(image_sections)
+    
+    # Final cleanup
+    text = text.strip()
+    
+    return text
+
+# Modify your parser's get_entries method to include cleaned content:
+def get_entries(self, limit: Optional[int] = None) -> List[Dict]:
+    """
+    Get parsed entries from the feed with performance optimization.
+    
+    Args:
+        limit (Optional[int]): Maximum number of entries to return
+        
+    Returns:
+        List[Dict]: List of parsed entries
+    """
+    if not self.feed_data:
+        if not self.fetch_feed():
+            return []
+
+    entries = []
+    try:
+        feed_entries = self.feed_data.entries[:limit] if limit else self.feed_data.entries
+        
+        for entry in feed_entries:
+            if not entry.get('title') or not entry.get('link'):
+                continue
+                
+            content = self._extract_full_content(entry)
+            cleaned_content = clean_article_content(content)
+            
+            parsed_entry = {
+                'title': entry.get('title', ''),
+                'link': entry.get('link', ''),
+                'published': entry.get('published', ''),
+                'content': cleaned_content,  # Use cleaned content here
+                'raw_content': content,  # Keep original content just in case
+                'author': entry.get('author', ''),
+                'categories': self._extract_categories(entry)
+            }
+            entries.append(parsed_entry)
+            
+            if limit and len(entries) >= limit:
+                break
+                
+    except Exception as e:
+        print(f"Error processing entries: {str(e)}")
+        
+    return entries
+
 def main(num_articles: int, timeout: int):
     feed_url = 'https://www.lux.camera/rss/'
     parser = PRWireParser(feed_url, timeout=timeout)
     
     if parser.fetch_feed():
         entries = parser.get_entries(limit=num_articles)
+
         for entry in entries:
             print(f"\nTitle: {entry['title']}")
             print(f"Author: {entry['author']}")
@@ -159,12 +255,15 @@ def main(num_articles: int, timeout: int):
             # print(f"Content length: {len(entry['content'])} characters")
             print("\nContent:")
             print("-" * 80)
-            print(entry['content'])
+            print(clean_article_content(entry['content']))
             print("-" * 80)
-            print("Content preview:", entry['content'])
+            # print("Content preview:", entry['content'])
             print("-" * 80)
     
     return entries
 
 if __name__ == "__main__":
     entries = main(num_articles=1, timeout=10)
+    # for entry in entries:
+        # print(entry['content'])
+        
