@@ -241,7 +241,9 @@ def get_entries(self, limit: Optional[int] = None) -> List[Dict]:
     return entries
 
 def main(num_articles: int, timeout: int):
-    feed_url = 'https://www.lux.camera/rss/'
+    # feed_url = 'https://www.lux.camera/rss/'
+    feed_url = 'https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEVlZXw==&_gl=1*1uxc8vr*_gcl_au*MjU2NjMzMzkxLjE3NDA1MzAyMzY.*_ga*MjIwMTYxNDQ0LjE3NDA1MzAyMzY.*_ga_ZQWF70T3FK*MTc0MDUzMDIzNS4xLjEuMTc0MDUzMDI3Ny4xOC4wLjA.'
+
     parser = PRWireParser(feed_url, timeout=timeout)
     
     if parser.fetch_feed():

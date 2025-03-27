@@ -132,7 +132,7 @@ def main(num_articles: int, timeout: int):
     feed_urls = [
         # 'https://www.prnewswire.com/rss/news-releases-list.rss',
         # 'https://www.prnewswire.com/rss/telecommunications-latest-news/telecommunications-latest-news-list.rss',
-        'https://www.lux.camera/rss/'
+        'https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEVlZXw==&_gl=1*1uxc8vr*_gcl_au*MjU2NjMzMzkxLjE3NDA1MzAyMzY.*_ga*MjIwMTYxNDQ0LjE3NDA1MzAyMzY.*_ga_ZQWF70T3FK*MTc0MDUzMDIzNS4xLjEuMTc0MDUzMDI3Ny4xOC4wLjA.'
     ]
     
     # Dictionary to store results
