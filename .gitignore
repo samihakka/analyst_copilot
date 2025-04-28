@@ -44,3 +44,4 @@ finetune/bin/accelerate
 RSS.ipynb
 =======
 >>>>>>> parent of fbb9e25 (Adding webscraping stuff from last semester, ignoring finetuning example for now)
+EDGAR/src/rag.ipynb
